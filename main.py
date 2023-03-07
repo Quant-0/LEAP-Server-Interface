@@ -1,9 +1,12 @@
+import time
 import customtkinter
 from tkinter import *
 import configparser
 import os
 from PIL import Image
 import collections
+from pysteamcmdwrapper import SteamCMD, SteamCMDException
+import subprocess
 
 customtkinter.set_appearance_mode("System")
 
@@ -19,7 +22,9 @@ class ConfigParserMultiValues(collections.OrderedDict):
     def getlist(value):
         return value.split(os.linesep)
 
-#config = ConfigParser.RawConfigParser(dict_type=MultiOrderedDict)
+
+steam = SteamCMD("steamcmd")
+SERVER_DIR = "leapserver"
 
 
 
@@ -59,6 +64,7 @@ class App(customtkinter.CTk):
 
         self.title("LEAP Server")
         self.geometry("1200x600")
+        self.iconbitmap("images/icon.ico")
 
         # set grid layout 1x2
         self.grid_rowconfigure(0, weight=1)
@@ -66,12 +72,18 @@ class App(customtkinter.CTk):
 
         # load images with light and dark mode image
         image_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "test_images")
-        self.logo_image = customtkinter.CTkImage(Image.open(os.path.join(image_path, "Logo.webp")), size=(120, 22))
         self.large_test_image = customtkinter.CTkImage(Image.open(os.path.join(image_path, "large_test_image.png")), size=(500, 150))
         self.image_icon_image = customtkinter.CTkImage(Image.open(os.path.join(image_path, "image_icon_light.png")), size=(20, 20))
-        self.home_image = customtkinter.CTkImage(light_image=Image.open(os.path.join(image_path, "home_dark.png")), dark_image=Image.open(os.path.join(image_path, "home_light.png")), size=(20, 20))
         self.chat_image = customtkinter.CTkImage(light_image=Image.open(os.path.join(image_path, "chat_dark.png")), dark_image=Image.open(os.path.join(image_path, "chat_light.png")), size=(20, 20))
         self.add_user_image = customtkinter.CTkImage(light_image=Image.open(os.path.join(image_path, "add_user_dark.png")), dark_image=Image.open(os.path.join(image_path, "add_user_light.png")), size=(20, 20))
+
+        #new images
+        images_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "images")
+        self.logo_image = customtkinter.CTkImage(Image.open(os.path.join(images_path, "Logo.webp")), size=(120, 22))
+        self.home_image = customtkinter.CTkImage(light_image=Image.open(os.path.join(images_path, "home_dark.png")), dark_image=Image.open(os.path.join(images_path, "home_light.png")), size=(20, 20))
+        self.image_steamcmd = customtkinter.CTkImage(Image.open(os.path.join(images_path, "steamcmd_button.png")), size=(145, 31))
+        self.image_leap_dw = customtkinter.CTkImage(Image.open(os.path.join(images_path, "leap_button.png")), size=(145, 31))
+        self.image_leap_home = customtkinter.CTkImage(Image.open(os.path.join(images_path, "leaplogocinematic-lines.png")), size=(497, 88))
 
         # create navigation frame
         self.navigation_f = customtkinter.CTkFrame(self, corner_radius=0)
@@ -104,20 +116,61 @@ class App(customtkinter.CTk):
         self.home_f = customtkinter.CTkFrame(self, corner_radius=0, fg_color="transparent")
         self.home_f.grid_columnconfigure(0, weight=1)
 
-        self.home_f_large_image_label = customtkinter.CTkLabel(self.home_f, text="", image=self.large_test_image)
+        self.home_f_large_image_label = customtkinter.CTkLabel(self.home_f, text="", image=self.image_leap_home)
         self.home_f_large_image_label.grid(row=0, column=0, padx=20, pady=10)
 
-        self.home_f_button_1 = customtkinter.CTkButton(self.home_f, text="", image=self.image_icon_image)
-        self.home_f_button_1.grid(row=1, column=0, padx=20, pady=10)
-        self.home_f_button_2 = customtkinter.CTkButton(self.home_f, text="CTkButton", image=self.image_icon_image, compound="right")
-        self.home_f_button_2.grid(row=2, column=0, padx=20, pady=10)
-        self.home_f_button_3 = customtkinter.CTkButton(self.home_f, text="CTkButton", image=self.image_icon_image, compound="top")
-        self.home_f_button_3.grid(row=3, column=0, padx=20, pady=10)
-        self.home_f_button_4 = customtkinter.CTkButton(self.home_f, text="CTkButton", image=self.image_icon_image, compound="bottom", anchor="w")
-        self.home_f_button_4.grid(row=4, column=0, padx=20, pady=10)
+        def start_server():
+                subprocess.run('cmd /k "start "" /w /high "leapserver\LEAP\Binaries\Win64\LEAPServer.exe" -nosteamclient PORT=7777 -server -log"', shell=True)
+
+        self.home_f_steamcmd = customtkinter.CTkButton(self.home_f, text="START", command=start_server)
+        self.home_f_steamcmd.grid(row=1, column=0, padx=(20, 20), pady=(30, 5))
+
+
+
+
 
         # create install frame
         self.install_f = customtkinter.CTkFrame(self, corner_radius=0, fg_color="transparent")
+        self.install_f.grid_columnconfigure((0, 1), weight=2)
+
+        self.install_f_install = customtkinter.CTkLabel(self.install_f, text="Install", font=("TkDefaultFont", 25))
+        self.install_f_install.grid(row=0, column=0, columnspan=3, padx=(20, 0), pady=(20, 0), sticky="nsew")
+
+        def dw_steamcmd():
+            try:
+                if not os.path.exists('steamcmd'):
+                    os.makedirs('steamcmd')
+                steam.install()
+                self.install_f_steamcmd_status.configure(text="Download Complete")
+                time.sleep(10.0)
+                self.install_f_steamcmd_status.configure(text=" ")
+            except SteamCMDException:
+                self.install_f_steamcmd_status.configure(text="Already installed")
+                time.sleep(10.0)
+                self.install_f_steamcmd_status.configure(text=" ")
+
+        def dw_leapserver():
+            if not os.path.exists('leapserver'):
+                os.makedirs('leapserver')
+            steam.app_update(906940, os.path.join(os.getcwd(), SERVER_DIR), validate=True)
+            self.install_f_leapserver_status.configure(text="Download Complete")
+
+
+
+        self.install_f_steamcmd = customtkinter.CTkButton(self.install_f, text="", image=self.image_steamcmd, command=dw_steamcmd)
+        self.install_f_steamcmd.grid(row=1, column=0, padx=(20, 20), pady=(30, 5))
+
+        self.install_f_steamcmd_status = customtkinter.CTkLabel(self.install_f, text=" ", font=("TkDefaultFont", 15))
+        self.install_f_steamcmd_status.grid(row=2, column=0, padx=(20, 20), pady=(5, 0), sticky="nsew")
+
+        self.install_f_leapserver = customtkinter.CTkButton(self.install_f, text="", image=self.image_leap_dw, command=dw_leapserver)
+        self.install_f_leapserver.grid(row=1, column=1, padx=(20, 20), pady=(30, 5))
+
+        self.install_f_leapserver_status = customtkinter.CTkLabel(self.install_f, text=" ", font=("TkDefaultFont", 15))
+        self.install_f_leapserver_status.grid(row=2, column=1, padx=(20, 20), pady=(5, 0), sticky="nsew")
+
+
+
 
 
 
